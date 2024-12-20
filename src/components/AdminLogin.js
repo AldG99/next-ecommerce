@@ -1,9 +1,5 @@
 import React, { useState } from 'react';
-import {
-  getAuth,
-  signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
-} from 'firebase/auth';
+import { signInWithEmailAndPassword } from '@firebase/auth';
 import {
   collection,
   addDoc,
@@ -11,7 +7,8 @@ import {
   doc,
   getDocs,
 } from 'firebase/firestore';
-import { db } from '../firebase/firebaseConfig';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { auth, db, storage } from '../firebase/firebaseConfig';
 import '../styles/AdminLogin.scss';
 
 const AdminLogin = () => {
@@ -24,12 +21,11 @@ const AdminLogin = () => {
   // Product Management State
   const [productName, setProductName] = useState('');
   const [productPrice, setProductPrice] = useState('');
-  const [productImage, setProductImage] = useState('');
+  const [productImage, setProductImage] = useState(null); // File input
   const [productDescription, setProductDescription] = useState('');
   const [products, setProducts] = useState([]);
 
   // Authentication
-  const auth = getAuth();
 
   // Login Handler
   const handleLogin = async e => {
@@ -82,10 +78,16 @@ const AdminLogin = () => {
     }
 
     try {
+      // Upload image to Firebase Storage
+      const imageRef = ref(storage, `productos/${productImage.name}`);
+      const snapshot = await uploadBytes(imageRef, productImage);
+      const imageUrl = await getDownloadURL(snapshot.ref);
+
+      // Create product object
       const newProduct = {
         nombre: productName,
         precio: parseFloat(productPrice),
-        imagen: productImage,
+        imagen: imageUrl,
         descripcion: productDescription || '',
       };
 
@@ -97,7 +99,7 @@ const AdminLogin = () => {
       // Reset form
       setProductName('');
       setProductPrice('');
-      setProductImage('');
+      setProductImage(null);
       setProductDescription('');
       setError('');
     } catch (error) {
@@ -181,10 +183,9 @@ const AdminLogin = () => {
             required
           />
           <input
-            type="text"
-            placeholder="URL de Imagen"
-            value={productImage}
-            onChange={e => setProductImage(e.target.value)}
+            type="file"
+            accept="image/*"
+            onChange={e => setProductImage(e.target.files[0])}
             required
           />
           <textarea
